@@ -43,6 +43,10 @@ def strace_parse(line)
   return nil if line.end_with? "+++ exited with 0 +++"
   # accept4(3,
   return nil if line.end_with? ", "
+  return nil if line.end_with? "<detached ...>"
+
+  p line if ENV['STRACES_DEBUG'] == "yes"
+
   matcher = line.match /^(?<pid>\d*)\s?(?<time>\d\d:\d\d:\d\d\.?\d*)?\s?(?<interrupted>\<\.\.\.)?(?<call>[^\(]+)(?<middle>.*)?\<(?<timing>\d+\.\d+)\>$/
 
   #63796 11:18:12 clock_gettime(CLOCK_MONOTONIC, {tv_sec=27510, tv_nsec=693534954}) = 0 <0.000108>
@@ -55,7 +59,6 @@ def strace_parse(line)
     [matcher[:call], matcher[:middle]]
   end
 
-  # <detached ..>
   timing = Float matcher[:timing] rescue 0.0
 
   if matcher
