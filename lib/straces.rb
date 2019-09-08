@@ -38,7 +38,22 @@ end
 
 
 def strace_parse(line)
-  matcher = line.match /^(?<pid>\d*)\s?(?<time>\d\d:\d\d:\d\d\.?\d*)?\s?(?<call>[^\(]+)(?<middle>.*)\<(?<timing>\d+\.\d+)\>$/
+  return nil if line.end_with? "<unfinished ...>"
+  return nil if line.end_with? "resumed>)      = ?"
+  return nil if line.end_with? "+++ exited with 0 +++"
+  # accept4(3,
+  return nil if line.end_with? ", "
+  matcher = line.match /^(?<pid>\d*)\s?(?<time>\d\d:\d\d:\d\d\.?\d*)?\s?(?<interrupted>\<\.\.\.)?(?<call>[^\(]+)(?<middle>.*)?\<(?<timing>\d+\.\d+)\>$/
+
+  #63796 11:18:12 clock_gettime(CLOCK_MONOTONIC, {tv_sec=27510, tv_nsec=693534954}) = 0 <0.000108>
+  #63796 11:18:12 <... clock_gettime resumed> {tv_sec=27510, tv_nsec=648632454}) = 0 <0.000356>
+
+  call, middle = if matcher[:interrupted]
+    syscall, rest = matcher[:call].split(" ")
+    [syscall, rest]
+  else
+    [matcher[:call], matcher[:middle]]
+  end
 
   # <detached ..>
   timing = Float matcher[:timing] rescue 0.0
@@ -46,8 +61,8 @@ def strace_parse(line)
   if matcher
     {
       pid: matcher[:pid],
-      call: matcher[:call],
-      middle: matcher[:middle],
+      call: call,
+      middle: middle,
       timing: timing
     }
   else
@@ -105,10 +120,10 @@ objs.each_with_index do |obj, i|
       obj[:time].round(4).to_s.ljust(6, "0"),
       obj[:timing].round(6).to_s.ljust(8, "0"),
       obj[:call].ljust(16),
-      "#"*(obj[:normalized] == 0 ? 1 : obj[:normalized])
+      "#".green*(obj[:normalized] == 0 ? 1 : obj[:normalized])
     ].join " "
   else
-    matches = filter.match /^(?<comparator>gt|lt|ge|le|eq)=(?<value>\d+\.?\d*)$/
+    matches = filter.match /^(?<comparator>at|gt|lt|ge|le|eq)=(?<value>\d+\.?\d*)$/
     comparator = matches && matches[:comparator]
     value = Float matches[:value] rescue nil
     if comparator.nil? || value.nil?
@@ -125,16 +140,22 @@ objs.each_with_index do |obj, i|
       :<
     when "lte"
       :<=
-    when "eq"
+    when "eq","at"
       :==
     end
 
-    if obj[:timing].send(ruby_comparator, value)
+    target = if comparator == "at"
+      obj[:time].round(4)
+    else
+      obj[:timing]
+    end
+
+    if target.send(ruby_comparator, value)
       terminal_width=Integer `tput cols`
       puts "-"*terminal_width
-      puts objs[i-lines_before..i-1].map {|o| format(o)}
-      puts format(objs[i]).red
-      puts objs[i+1..i+lines_after].map {|o| format(o)}
+      puts objs[i-lines_before..i-1].map {|o| format(o) + "\n" + "#".green*(o[:normalized] == 0 ? 1 : o[:normalized])}
+      puts format(objs[i]).red + "\n" + "#".green*(objs[i][:normalized] == 0 ? 1 : objs[i][:normalized])
+      puts objs[i+1..i+lines_after].map {|o| format(o) + "\n" + "#".green*(o[:normalized] == 0 ? 1 : o[:normalized])}
 
       puts ""
     end
