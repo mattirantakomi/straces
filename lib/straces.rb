@@ -38,7 +38,7 @@ end
 
 
 def strace_parse(line)
-  matcher = line.match /^(?<time>\d\d:\d\d:\d\d\.?\d*)?\s?(?<pid>\d*)\s?(?<call>[^\(]+)(?<middle>.*)\<(?<timing>\d+\.\d+)\>$/
+  matcher = line.match /^(?<pid>\d*)\s?(?<time>\d\d:\d\d:\d\d\.?\d*)?\s?(?<call>[^\(]+)(?<middle>.*)\<(?<timing>\d+\.\d+)\>$/
 
   # <detached ..>
   timing = Float matcher[:timing] rescue 0.0
