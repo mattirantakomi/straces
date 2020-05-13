@@ -44,8 +44,7 @@ def strace_parse(line)
   # accept4(3,
   return nil if line.end_with? ", "
   return nil if line.end_with? "<detached ...>"
-
-  p line if ENV['STRACES_DEBUG'] == "yes"
+  return nil if line.include? "resuming interrupted call"
 
   matcher = line.match /^(?<pid>\d*)\s?(?<time>\d\d:\d\d:\d\d\.?\d*)?\s?(?<interrupted>\<\.\.\.)?(?<call>[^\(]+)(?<middle>.*)?\<(?<timing>\d+\.\d+)\>$/
 
@@ -153,14 +152,24 @@ objs.each_with_index do |obj, i|
       obj[:timing]
     end
 
-    if target.send(ruby_comparator, value)
-      terminal_width=Integer `tput cols`
-      puts "-"*terminal_width
-      puts objs[i-lines_before..i-1].map {|o| format(o) + "\n" + "#".green*(o[:normalized] == 0 ? 1 : o[:normalized])}
-      puts format(objs[i]).red + "\n" + "#".green*(objs[i][:normalized] == 0 ? 1 : objs[i][:normalized])
-      puts objs[i+1..i+lines_after].map {|o| format(o) + "\n" + "#".green*(o[:normalized] == 0 ? 1 : o[:normalized])}
+    strace_ignores = ENV.fetch("STRACES_IGNORE", "").split(",")
+    fucked_up = obj[:call].split(" ").last
+    next if strace_ignores.include? fucked_up
 
-      puts ""
+    if target.send(ruby_comparator, value)
+      if ENV["STRACES_SUM"]
+        $total ||= 0
+        $total = $total + objs[i][:timing]
+        puts "#{$total.round(2)}s \t #{objs[i][:timing].round(3)}s #{objs[i-1][:middle]} #{objs[i][:call]}"
+      else
+        terminal_width=Integer `tput cols`
+        puts "-"*terminal_width
+        puts objs[i-lines_before..i-1].map {|o| format(o) + "\n" + "#".green*(o[:normalized] == 0 ? 1 : o[:normalized])}
+        puts format(objs[i]).red + "\n" + "#".green*(objs[i][:normalized] == 0 ? 1 : objs[i][:normalized])
+        puts objs[i+1..i+lines_after].map {|o| format(o) + "\n" + "#".green*(o[:normalized] == 0 ? 1 : o[:normalized])}
+        puts ""
+      end
+
     end
   end
 end
