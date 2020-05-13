@@ -38,6 +38,9 @@ end
 
 
 def strace_parse(line)
+  return nil if line.include? "... epoll_wait resumed>"
+  return nil if line.include? "... poll resumed>"
+
   return nil if line.end_with? "<unfinished ...>"
   return nil if line.end_with? "resumed>)      = ?"
   return nil if line.end_with? "+++ exited with 0 +++"
@@ -83,7 +86,6 @@ def process(lines, syscalls_ignored, syscalls_focused)
 
     # syscall contains time+space
     fucked_up = obj[:call].split(" ").last
-
     if syscalls_focused.length > 0
       next unless syscalls_focused.include? fucked_up
     end
