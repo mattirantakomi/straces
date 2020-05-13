@@ -81,10 +81,15 @@ def process(lines, syscalls_ignored, syscalls_focused)
     obj = strace_parse(line)
     next unless obj
 
+    # syscall contains time+space
+    fucked_up = obj[:call].split(" ").last
+
     if syscalls_focused.length > 0
-      next unless syscalls_focused.include? obj[:call]
+      next unless syscalls_focused.include? fucked_up
     end
-    next if syscalls_ignored.include? obj[:call]
+    if syscalls_ignored.length > 0
+      next if syscalls_ignored.include? fucked_up
+    end
 
     obj[:time] = obj[:timing] + last_obj[:time]
     last_obj = obj
@@ -151,10 +156,6 @@ objs.each_with_index do |obj, i|
     else
       obj[:timing]
     end
-
-    strace_ignores = ENV.fetch("STRACES_IGNORE", "").split(",")
-    fucked_up = obj[:call].split(" ").last
-    next if strace_ignores.include? fucked_up
 
     if target.send(ruby_comparator, value)
       if ENV["STRACES_SUM"]
