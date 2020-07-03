@@ -38,6 +38,10 @@ end
 
 
 def strace_parse(line)
+  return nil if line.include? "--- stopped by SIGSTOP ---"
+  return nil if line.include? "--- SIGCONT"
+  return nil if line.include? "exit_group(0)   = ?"
+
   return nil if line.include? "... epoll_wait resumed>"
   return nil if line.include? "... poll resumed>"
 
