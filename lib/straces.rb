@@ -106,8 +106,8 @@ end
 
 def format(obj)
   [
-    obj[:time].round(4).to_s.ljust(6, "0"),
-    obj[:timing].round(6).to_s.ljust(8, "0"),
+    sprintf("%.6f", obj[:time]),
+    sprintf("%.6f", obj[:timing]),
     obj[:call].ljust(16),
     obj[:middle],
   ].join(" ")
@@ -129,9 +129,8 @@ objs.each_with_index do |obj, i|
 
   unless filter
     puts [
-
-      obj[:time].round(4).to_s.ljust(6, "0"),
-      obj[:timing].round(6).to_s.ljust(8, "0"),
+      sprintf("%.6f", obj[:time]),
+      sprintf("%.6f", obj[:timing]),
       obj[:call].ljust(16),
       "#".green*(obj[:normalized] == 0 ? 1 : obj[:normalized])
     ].join " "
